@@ -64,10 +64,9 @@ az storage share create --name DFIR
 az storage file upload --share-name DFIR --source /hash-LiveResponseCollection-Bambiraptor.zip
 
 #Asociar una unidad de red a la máquina virtual
-$acctKey = ConvertTo-SecureString -String "wBis+FYyENz9BvLpWBHamQCdDlNJN/XGSKtEL/05RnCFzbnz75zDeqRtDXUpcJggogXPY0DeCucVZdbnPn/qqw==" -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PSCredential -ArgumentList "Azure\csbd72bc2388164x47d3x878", $acctKey
-New-PSDrive -Name Z -PSProvider FileSystem -Root "\\csbd72bc2388164x47d3x878.file.core.windows.net\cs-lorien-dr-hotmail-com-10033fff8e3d6faf" -Credential $credential -Persist
-
+$acctKey = ConvertTo-SecureString -String "xxx==" -AsPlainText -Force
+$credential = New-Object System.Management.Automation.PSCredential -ArgumentList "Azure\xxx", $acctKey
+New-PSDrive -Name Z -PSProvider FileSystem -Root "\\xxx.file.core.windows.net\cs-xxxx" -Credential $credential -Persist
 
 ##Auditoría con Azucar (https://github.com/nccgroup/azucar/)
 #Confuguración previa para PowerShell
