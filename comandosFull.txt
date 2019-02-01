@@ -1,0 +1,119 @@
+COMANDOS Y PASOS A SEGUIR
+##Requisitos
+#Distrubución onpensource como Remnux:
+https://docs.google.com/uc?id=0B6fULLT_NpxMampUWlBCQXVJZzA&export=download
+#Descargar configurar la última versión de Volatitlity:
+git clone https://github.com/volatilityfoundation/volatility.git
+chmod 755 vol.py
+python setup.py install
+
+#Otros VirtualBox
+#Instalar ADDITIONS a la MV. Montamos la unidad que aparece en Places, posicionarse en ella y ejecutar en un terminal como admin: 
+sudo bash ./VBoxLinuxAdditions.run # proceso para instalar Virtual Box Additions.
+#copiar ficheros del compartido a la home
+cd /media/sf_Downloads #nos posicionamos en el compartido (ej: sf_Downloads)
+mv usb.img ruta (ej:/home/parrito) #copiamos la imagen al directorio que deseemos
+
+------------------------AZURE----------------------
+#Instalación de CLI: https://docs.microsoft.com/es-es/cli/azure/install-azure-cli?view=azure-cli-latest
+#Comandos para configurar el entorno en AZURE:
+az login - ponemos en el navegador el enlace generado tipo: https://microsoft.com/devicelogin y el código dado
+
+
+#Configuración geográfica por defecto sobre lo que vamos a generar
+az configure --defaults location=westeurope
+
+#Creación de un grupo de recursos para nuestras instancias
+az group create --name Recursos --location westeurope
+
+#Creación de una red virtual principal con una subred secundaría
+az network vnet create --resource-group Recursos --name RedVirtual --address-prefix 192.168.0.0/16 --subnet-name SubredEmp --subnet-prefix 192.168.1.0/24
+
+#Creación de una ip pública
+az network public-ip create --resource-group Recursos --name IPpublica --dns-name dnspub
+
+#Creación de un grupo de seguridad
+az network nsg create --resource-group Recursos --name GrupoDeSeguridad
+
+#Creación de unas reglas para los accesos al entorno
+az network nsg rule create --resource-group Recursos --nsg-name GrupoDeSeguridad --name ReglaWEB --protocol tcp --priority 1001 --destination-port-range 80 --access allow
+az network nsg rule create --resource-group Recursos --nsg-name GrupoDeSeguridad --name ReglaRDP --protocol tcp --priority 1002 --destination-port-range 3389 --access allow
+
+#Creación de dos nic para nuestras máquunas
+az network nsg show --resource-group Recursos --name GrupoDeSeguridad
+az network nic create --resource-group Recursos --name NicRecursos1 --vnet-name RedVirtual --subnet SubredEmp --public-ip-address IPpublica --network-security-group GrupoDeSeguridad
+az network nic create --resource-group Recursos --name NicRecursos2 --vnet-name RedVirtual --subnet SubredEmp --network-security-group GrupoDeSeguridad
+
+#Creación de un conjunto de disponiblilidad para nuestros recurosos
+az vm availability-set create --resource-group Recursos --name ConjuntoDispo
+
+#Información sobre las máquinas según nuestra localización
+az vm image list --output table --location westeurope
+az vm image list --offer Win --location westeurope --output table 
+
+#Creación de dos máquinas virtuales
+az vm create --resource-group Recursos --name VMMadrid --location westeurope --availability-set ConjuntoDispo --nics NicRecursos1 --image Win2016Datacenter --os-disk-name DISCO_1 --size Standard_B2s --storage-sku Standard_LRS --license-type Windows_Client --admin-username azure --generate-ssh-keys
+az vm create --resource-group Recursos --name VMGranada --location westeurope --availability-set ConjuntoDispo --nics NicRecursos2 --image Win2016Datacenter --os-disk-name DISCO_2 --size Standard_B2s --storage-sku Standard_LRS --license-type Windows_Client --admin-username azure --generate-ssh-keys
+
+#Compobación de conectividad
+az network vnet check-ip-address -n RedVirtual -g Recursos --ip-address 192.168.1.4
+
+
+#Creación de una unidad de almacenamiento con nuestras tools(DFIR)
+az storage share create --name DFIR
+az storage file upload --share-name DFIR --source /hash-LiveResponseCollection-Bambiraptor.zip
+
+#Asociar una unidad de red a la máquina virtual
+$acctKey = ConvertTo-SecureString -String "wBis+FYyENz9BvLpWBHamQCdDlNJN/XGSKtEL/05RnCFzbnz75zDeqRtDXUpcJggogXPY0DeCucVZdbnPn/qqw==" -AsPlainText -Force
+$credential = New-Object System.Management.Automation.PSCredential -ArgumentList "Azure\csbd72bc2388164x47d3x878", $acctKey
+New-PSDrive -Name Z -PSProvider FileSystem -Root "\\csbd72bc2388164x47d3x878.file.core.windows.net\cs-lorien-dr-hotmail-com-10033fff8e3d6faf" -Credential $credential -Persist
+
+
+##Auditoría con Azucar (https://github.com/nccgroup/azucar/)
+#Confuguración previa para PowerShell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Undefined -Force
+Set-ExecutionPolicy Unrestricted -Scope Process
+Powershell.exe -ExecutionPolicy Unrestricted -File c:\azucar\Azucar.ps1
+#Comando genérico:
+.\Azucar.ps1 -ExportTo CSV -Verbose
+
+-----------Volatitlity---------------------------------------
+LISTA DE COMANDOS ÚTILES DE REFERENCIA (en general no específicos para el taller) OJO: volatility o python vol.py
+
+#Búsquedas en memoria Ram previamente extraida con Volatitlity
+python vol.py imageinfo -f VMDelegMadrid_20181104_161302.dmp 
+#al final la elegida es: Win2016x64_14393 o no?
+
+#Nos centramos en obtener los usuarios y contraseñas
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 hivelist #buscamos en el registro la información sobre el perfil selcionado
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 hashdump -y 0xfffff8a000023410 -s 0xfffff8a006120010 #buscamos los hashes de las conrtaseñas de los usuarios, (sobre: system y sam) y utilizamos el recuros online de crackstation.net
+
+#Recorido por archivos del sistema
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 filescan #hacemos una búsqueda general de todos los archivos en memoria
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 filescan | grep falken > archivos.txt #Nos fijamos en un usuario y lo exportamos a un archivo de texto
+
+#Búsqueda de Malware
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 netscan #Miramos las información de los procesos relacionado con la red.
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 dlldump --memory -D /home/parrito/temp #Extraemos las DDLs de la memoria
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 malfind -D /home/parrito/temp #analizamos los procesos pontencialmente dañinos
+volatility -f VMDelegMadrid_20181104_161302.dmp --profile=Win2016x64_14393 moddump --memory -D /home/parrito/temp #Extraemos hasta los drivers cargados en el nucleo del sistema
+
+freshclam -v # refrescamos las referencias al antivirus
+clamscan /home/parrito/temp/ | grep -v ": OK$" # lanzamos el antivirus contra todo lo recolectado
+
+
+volatility -f VMDelegMadrid_20181104_161302 kdbgscan #busqueda de los perfiles del ordenador en memoria
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 psscan # buscamos los procesos activos y vemos el PID del proceso que nos interese
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 filescan #hacemos una búsqueda general de todos los archivos en memoria
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 filescan | grep falken > archivos.txt #Nos fijamos en un usuario y lo exportamos a un archivo de texto
+
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 filescan | grep explorer
+
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 dumpfiles -Q 0x000000003e395660 --name -D /home/parrito #Nos fijamos en algún archivo clave y lo exportamos a nuestro local para examinarlo
+
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 netscan #Miramos las información de los procesos relacionado con la red.
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 malfind -D /home/parrito/temp #analizamos los procesos pontencialmente dañinos
+
+volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 consoles #busca el buffer del teclado y saca el contenido del cmd ejecurtado por el admin
+
+
