@@ -115,4 +115,59 @@ volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 malfind -
 
 volatility -f VMDelegMadrid_20181104_161302 --profile=Win2016x64_14393 consoles #busca el buffer del teclado y saca el contenido del cmd ejecurtado por el admin
 
+------------------------SKADI----------------------
+#Ejemplo de instalación de Skadi
 
+The Nginx reverse proxy setup and can be accessed at 
+http://<IP Address> or http://localhost if installed locally:
+The following are the credentials needed to access this build 
+and are stored in /opt/skadi_credentials if run-time generated credentials was chosen: 
+
+Proxy & Grafana Account:
+   - Username: skadi_<random chars>
+   - Password: <random chars>
+
+TimeSketch Account:
+   - Username: skadi_<random chars>
+   - Password: <random chars>
+
+OS Account:
+   - Username: skadi
+   - Password: <random chars>
+
+The following files have credentials used in the build process stored in them:
+  - /opt/skadi_credentials (only if run-time generated credentials chosen)
+  - /opt/Skadi/Docker/.env
+  - /opt/Skadi/Docker/skadi_dockprom/.env
+  
+  Skadi Setup is Complete
+
+The Nginx reverse proxy setup and can be accessed at http://<IP Address> or http://localhost if installed locally:
+The following are the credentials needed to access this build and are stored in /opt/skadi_credentials if run-time generated credentials was chosen:
+
+  
+#Adquisición Windows
+CyLR.exe -u skadi -p skadi -s 23.97.236.97 -of 
+CyLR.exe -u skadi -p skadi -s 23.97.236.97 -m
+CyLR.exe -u skadi_OXSF skadi -s 23.97.236.97 -of C:\Users\azure\Downloads\VMMadrid.zip
+CyLR.exe --force-native -u skadi -p skadi -s 23.97.236.97 -of VMGranada.zip
+CyLR.exe --force-native -u skadi_OXSF -p password- -s 23.97.236.97 -of VMSistemas.zip
+
+#Apertura de firewall para envío de datos (powershell)
+New-NetFirewallRule -DisplayName 'SSH Inbound' -Profile @('Domain', 'Private', 'Public') -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
+
+#Procesamiento de datos de Windows a Skadi
+cdqr.exe -z --max_cpu VMMadrid.zip 192.168.1.7
+cdqr.exe -p win C:\Users\azure\Downloads\VMGranada.zip
+
+
+#Adquisición Linux
+/usr/bin/python rc_client.py 23.97.236.97 <commands to send to rc_server.py>
+$ sudo apt install build-essential dkms linux-headers-$(uname -r)
+
+wget http://loriendr.westeurope.cloudapp.azure.com/downloads/CyLR_linux-x64.zip
+wget -O http://23.97.236.97/downloads/CyLR_linux-x64.zip
+wget --user skadi_OXSF --password password- http://23.97.236.97/downloads/CyLR_linux-x64.zip
+
+#Otros recursos
+http://loriendr.westeurope.cloudapp.azure.com/cyberchef.htm
